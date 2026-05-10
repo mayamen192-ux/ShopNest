@@ -9,8 +9,9 @@ namespace ShopNest
 
     internal class Program
     {
-        //global storage
-        static Store store = new Store("ShopNest Store");
+
+        static Store store;
+
 
 
         //helping functions
@@ -25,6 +26,8 @@ namespace ShopNest
             Console.WriteLine("6. Cancel Order");
             Console.WriteLine("7. View Customer Order History");
             Console.WriteLine("8. Show Store Statistics");
+            Console.WriteLine("9. Display Physical Products Only");
+            Console.WriteLine("10. Display Digital Products Only");
             Console.WriteLine("0. Exit");
       
         }
@@ -58,6 +61,12 @@ namespace ShopNest
 
             store.PlaceOrder("ahmed@gmail.com", 102);
             store.PlaceOrder("ahmed@gmail.com", 104);
+
+
+            store.RegisterPremiumCustomer("VIP Customer", "vip@gmail.com");
+
+            store.PlaceOrder("vip@gmail.com", 100);
+            store.PlaceOrder("vip@gmail.com", 103);
         }
         static public void AddPhysicalProductMenu()
         {
@@ -255,9 +264,52 @@ namespace ShopNest
             }
 
         }
+        static public void DisplayPhysicalProductsMenu()
+        {
+            store.DisplayPhysicalProducts();
+        }
+
+        static public void DisplayDigitalProductsMenu()
+        {
+            store.DisplayDigitalProducts();
+        }
         static void Main(string[] args)
         {
+            Store.PrintSystemBanner();
+
+            store = new Store("ShopNest Store");
+
+            Admin admin = new Admin("System Admin", "admin@shopnest.com", "Manager");
+            admin.DisplayInfo();
+
             SeedData();
+
+            Console.WriteLine("\n=== Premium Customer Test ===");
+
+            Customer vip = store.FindCustomer("vip@gmail.com");
+
+            if (vip != null)
+            {
+                vip.DisplayInfo();
+            }
+            // get customer from store instead of creating manually
+            Customer original = store.FindCustomer("ali@gmail.com");
+
+            if (original == null)
+            {
+                Console.WriteLine("Customer not found.");
+                return;
+            }
+
+            // copy constructor
+            Customer duplicate = new Customer(original);
+
+            // display both
+            Console.WriteLine("Original Customer:");
+            original.DisplayInfo();
+
+            Console.WriteLine("\nCopied Customer:");
+            duplicate.DisplayInfo();
             Console.Clear();
 
             bool exit = false;
@@ -273,7 +325,7 @@ namespace ShopNest
                 // safe input handling
                 if (!int.TryParse(Console.ReadLine(), out option))
                 {
-                    Console.WriteLine("Invalid input. Please enter a number from 0 to 8.");
+                    Console.WriteLine("Invalid input. Please enter a number from 0 to 10.");
                     continue;
                 }
 
@@ -304,6 +356,13 @@ namespace ShopNest
                     case 8://Display Statistics operation
                         store.DisplayStatistics();
                         break;
+                    case 9://  Display Physical Products Menu operation
+                        DisplayPhysicalProductsMenu();
+                        break;
+
+                    case 10://Display Digital Products Menu operation
+                        DisplayDigitalProductsMenu();
+                        break;
                     case 0://Exit operation
                         if (ConfirmExit())
                         {
@@ -312,7 +371,7 @@ namespace ShopNest
                         break;
 
                     default:
-                        Console.WriteLine("Invalid option. Please choose between 0 and 8.");
+                        Console.WriteLine("Invalid option. Please choose between 0 and 10.");
                         break;
 
                 }
@@ -399,8 +458,8 @@ abstract class Product
         {
             return totalProductsCreated;
         }
-        public virtual double CalculateTotalCost()
-        {
+        public virtual double CalculateTotalCost()//polymorphism for overriden method in its child class
+    {
             return price;
         }
     }
@@ -476,36 +535,56 @@ class PhysicalProduct : Product
 //DigitalProduct class
 class DigitalProduct : Product
 {
-    // Private Fields
     private double fileSizeMB;
     private string downloadLink;
 
-    // Constructor
-    public DigitalProduct(string name, double price, double fileSizeMB, string downloadLink) : base(name, price)
+    // NEW: discount field (0–100)
+    private double discountPercent;
+
+    public DigitalProduct(string name, double price, double fileSizeMB, string downloadLink)
+        : base(name, price)
     {
         this.fileSizeMB = fileSizeMB;
         this.downloadLink = downloadLink;
+        this.discountPercent = 0; // default no discount
     }
 
-    // Overridden Method
+    // NEW: method to apply discount
+    public void ApplyDiscount(double percent)
+    {
+        if (percent < 0 || percent > 100)
+        {
+            Console.WriteLine("Invalid discount percent.");
+            return;
+        }
+
+        discountPercent = percent;
+    }
+
+    // OVERRIDE: discounted price logic
+    public override double CalculateTotalCost()
+    {
+        return price * (1 - discountPercent / 100);
+    }
+
     public override void DisplayInfo()
     {
         Console.WriteLine("[Digital Product]");
-        Console.WriteLine("Product ID  :"+ ProductID);
-        Console.WriteLine("Name        :"+ Name);
-        Console.WriteLine("Price       :"+ Price);
-        Console.WriteLine("File Size   : "+fileSizeMB+" MB");
-        Console.WriteLine("Download Link:"+ downloadLink);
+        Console.WriteLine("Product ID  :" + ProductID);
+        Console.WriteLine("Name        :" + Name);
+        Console.WriteLine("Price       :" + Price);
+        Console.WriteLine("File Size   :" + fileSizeMB + " MB");
+        Console.WriteLine("Download Link:" + downloadLink);
+        Console.WriteLine("Discount    :" + discountPercent + "%");
+        Console.WriteLine("Final Price  :" + CalculateTotalCost());
     }
-
-    
 }
 
 // Customer class
 class Customer : User //inhertiance:Reuse code
 {
     // Private Field
-    private List<Order> orders;
+    protected List<Order> orders;
 
     // Constructor
     public Customer(string fullName, string email)
@@ -513,9 +592,16 @@ class Customer : User //inhertiance:Reuse code
     {
         orders = new List<Order>();
     }
+    // Copy Constructor
+    public Customer(Customer other)
+        : base(other.FullName, other.Email)
+    {
+        //  new empty list (do not copy orders)
+        orders = new List<Order>();
+    }
 
     // Override DisplayInfo()
-    public override void DisplayInfo()
+    public  override void DisplayInfo()
     {
         Console.WriteLine("---Customer---");
         Console.WriteLine("Name:         "+FullName);
@@ -524,7 +610,7 @@ class Customer : User //inhertiance:Reuse code
     }
 
     // Add Order
-    public void AddOrder(Order order)
+    public virtual void AddOrder(Order order)
     {
         orders.Add(order);
     }
@@ -553,6 +639,39 @@ class Customer : User //inhertiance:Reuse code
         }
     }
 }
+class PremiumCustomer : Customer
+{
+    // Private field
+    private int loyaltyPoints;
+
+    // Constructor
+    public PremiumCustomer(string fullName, string email)
+        : base(fullName, email)
+    {
+        loyaltyPoints = 0;
+    }
+
+    // Override AddOrder
+    public override void AddOrder(Order order)
+    {
+        // call parent method
+        base.AddOrder(order);
+
+        // add loyalty points
+        loyaltyPoints += 10;
+    }
+
+    // Override DisplayInfo
+    // Override DisplayInfo
+    public override void DisplayInfo()
+    {
+        Console.WriteLine("---Premium Customer---");
+        Console.WriteLine("Name:           " + FullName);
+        Console.WriteLine("Email:          " + Email);
+        Console.WriteLine("Total Orders:   " + orders.Count);
+        Console.WriteLine("Loyalty Points: " + loyaltyPoints);
+    }
+}
 
 //Admin class
 class Admin : User
@@ -579,6 +698,8 @@ class Admin : User
     }
 }
 
+
+//Other classes
 //Order class
 class Order
 {
@@ -586,7 +707,7 @@ class Order
     private static int nextOrderID = 5000;
 
     // Private Fields
-    private int orderID; //Encapsulation : Hide data
+    private int orderID; // Encapsulation : Hide data
     private Customer customer;
     private Product product;
     private double totalCost;
@@ -688,7 +809,7 @@ class Store
         foreach (Product p in products)
         {
             // polymorphism:1.public override void DisplayInfo() { Console.WriteLine("Physical Product");},2.public override void DisplayInfo()  {Console.WriteLine("Digital Product"); }
-            //polmorephism:Many Forms or Many Behaviours
+            //polymorephism:Many Forms or Many Behaviours
             p.DisplayInfo(); 
 
             Console.WriteLine("----------------------");
@@ -700,6 +821,7 @@ class Store
     public void RegisterCustomer(string fullName, string email)
     {
         // check duplicate
+        //It searches the customers list to find a customer whose email matches the given email
         Customer existing = customers.Find(c => c.Email == email);
 
         if (existing != null)
@@ -743,7 +865,7 @@ class Store
         orders.Add(order);
         customer.AddOrder(order);
 
-        Console.WriteLine("Order placed successfully. Order ID: " + order.OrderID+ ", Total: "+order.TotalCost);
+        Console.WriteLine("Order placed successfully. Order ID: " + order.OrderID + ", Total: "+order.TotalCost);
     }
 
     public void CancelOrder(int orderID)
@@ -761,6 +883,7 @@ class Store
         order.Customer.RemoveOrder(orderID);
 
         // remove from store list
+        //It removes orders from the list where the OrderID matches the given orderID.
         orders.RemoveAll(o => o.OrderID == orderID);
 
         Console.WriteLine("Order cancelled successfully.");
@@ -778,6 +901,26 @@ class Store
 
         customer.DisplayInfo();
         customer.DisplayOrderHistory();
+    }
+    public void ApplyDiscountToDigitalProduct(int productID, double discount)
+    {
+        Product p = products.Find(x => x.ProductID == productID);
+
+        if (p == null)
+        {
+            Console.WriteLine("Product not found.");
+            return;
+        }
+
+        if (p is DigitalProduct dp)
+        {
+            dp.ApplyDiscount(discount);
+            Console.WriteLine("Discount applied successfully.");
+        }
+        else
+        {
+            Console.WriteLine("This product is not digital.");
+        }
     }
 
     // ================= Statistics =================
@@ -811,5 +954,67 @@ class Store
         Console.WriteLine("Total Orders:         "+ orders.Count);
         Console.WriteLine("Total Revenue:        "+totalRevenue);
         Console.WriteLine("Total Users Created:  "+User.GetTotalUsersCreated());
+    }
+    public static void PrintSystemBanner()
+    {
+        Console.WriteLine("===== Welcome to ShopNest E-Commerce System =====");
+    }
+    public void DisplayPhysicalProducts()
+    {
+        Console.WriteLine("=== Physical Products ===");
+
+        bool found = false;
+
+        foreach (Product p in products)
+        {
+            if (p is PhysicalProduct)
+            {
+                p.DisplayInfo();
+                Console.WriteLine("----------------------");
+                found = true;
+            }
+        }
+
+        if (!found)
+        {
+            Console.WriteLine("No physical products found.");
+        }
+    }
+    public void DisplayDigitalProducts()
+    {
+        Console.WriteLine("=== Digital Products ===");
+
+        bool found = false;
+
+        foreach (Product p in products)
+        {
+            if (p is DigitalProduct)
+            {
+                p.DisplayInfo();
+                Console.WriteLine("----------------------");
+                found = true;
+            }
+        }
+
+        if (!found)
+        {
+            Console.WriteLine("No digital products found.");
+        }
+    }
+    public void RegisterPremiumCustomer(string fullName, string email)
+    {
+        Customer existing = customers.Find(c => c.Email == email);
+
+        if (existing != null)
+        {
+            Console.WriteLine("Error: Email already registered.");
+            return;
+        }
+
+        PremiumCustomer pc = new PremiumCustomer(fullName, email);
+
+        customers.Add(pc);
+
+        Console.WriteLine("Premium customer registered successfully.");
     }
 }
