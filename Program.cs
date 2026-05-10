@@ -63,10 +63,10 @@ namespace ShopNest
             store.PlaceOrder("ahmed@gmail.com", 104);
 
 
-            store.RegisterPremiumCustomer("VIP Customer", "vip@gmail.com");
+            store.RegisterPremiumCustomer("Mayamen Customer", "mayamen@gmail.com");
 
-            store.PlaceOrder("vip@gmail.com", 100);
-            store.PlaceOrder("vip@gmail.com", 103);
+            store.PlaceOrder("mayamen@gmail.com", 100);
+            store.PlaceOrder("mayamen@gmail.com", 103);
         }
         static public void AddPhysicalProductMenu()
         {
@@ -286,11 +286,11 @@ namespace ShopNest
 
             Console.WriteLine("\n=== Premium Customer Test ===");
 
-            Customer vip = store.FindCustomer("vip@gmail.com");
+            Customer customer = store.FindCustomer("mayamen@gmail.com");
 
-            if (vip != null)
+            if (customer != null)
             {
-                vip.DisplayInfo();
+                customer.DisplayInfo();
             }
             // get customer from store instead of creating manually
             Customer original = store.FindCustomer("ali@gmail.com");
